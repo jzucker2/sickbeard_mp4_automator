@@ -209,7 +209,11 @@ def processFile(inputfile, tagdata, relativePath=None):
         converter.replicate(output['output'], relativePath=relativePath)
         if settings.post_process:
             post_processor = PostProcessor(output)
-            post_processor.run_scripts()
+            try:
+                post_processor.run_scripts()
+            except Exception as e:
+                print 'run scripts'
+                print e
 
 
 def walkDir(dir, silent=False, preserveRelative=False, tvdbid=None, tag=True):

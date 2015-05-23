@@ -55,7 +55,11 @@ if len(sys.argv) > 4:
         # run any post process scripts
         if settings.post_process:
             post_processor = PostProcessor(output)
-            post_processor.run_scripts()
+            try:
+                post_processor.run_scripts()
+            except Exception as e:
+                print 'run scripts'
+                print e
 
         try:
             refresh = json.load(urllib.urlopen(settings.getRefreshURL(tvdb_id)))
