@@ -12,23 +12,29 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with Sick Beard.  If not, see <http://www.gnu.org/licenses/>.
 
 
 import sys
-import urllib
+try:
+    from urllib.request import FancyURLopener
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib import FancyURLopener
+    from urllib import urlencode
 import os.path
 import logging
 
-class AuthURLOpener(urllib.FancyURLopener):
+
+class AuthURLOpener(FancyURLopener):
     def __init__(self, user, pw):
         self.username = user
         self.password = pw
         self.numTries = 0
-        urllib.FancyURLopener.__init__(self)
-    
+        FancyURLopener.__init__(self)
+
     def prompt_user_passwd(self, host, realm):
         if self.numTries == 0:
             self.numTries = 1
@@ -38,11 +44,11 @@ class AuthURLOpener(urllib.FancyURLopener):
 
     def openit(self, url):
         self.numTries = 0
-        return urllib.FancyURLopener.open(self, url)
+        return FancyURLopener.open(self, url)
 
 
 def processEpisode(dirName, settings, nzbName=None, logger=None):
-    
+
     # Setup logging
     if logger:
         log = logger
@@ -57,29 +63,29 @@ def processEpisode(dirName, settings, nzbName=None, logger=None):
         ssl = int(settings.Sickbeard['ssl'])
     except:
         ssl = 0
-    
+
     try:
         web_root = settings.Sickbeard['web_root']
     except:
         web_root = ""
-    
+
     params = {}
-    
+
     params['quiet'] = 1
 
     params['dir'] = dirName
-    if nzbName != None:
+    if nzbName is not None:
         params['nzbName'] = nzbName
 
     myOpener = AuthURLOpener(username, password)
-    
+
     if ssl:
         protocol = "https://"
     else:
         protocol = "http://"
 
-    url = protocol + host + ":" + port + web_root + "/home/postprocess/processEpisode?" + urllib.urlencode(params)
-    
+    url = protocol + host + ":" + port + web_root + "/home/postprocess/processEpisode?" + urlencode(params)
+
     log.debug('Host: %s.' % host)
     log.debug('Port: %s.' % port)
     log.debug('Username: %s.' % username)
@@ -89,13 +95,13 @@ def processEpisode(dirName, settings, nzbName=None, logger=None):
     log.debug('URL: %s.' % url)
 
     log.info("Opening URL: %s." % url)
-    
+
     try:
         urlObj = myOpener.openit(url)
-    except IOError, e:
+    except IOError:
         log.exception("Unable to open URL")
         sys.exit(1)
-    
+
     result = urlObj.readlines()
     lastline = None
 
@@ -106,4 +112,3 @@ def processEpisode(dirName, settings, nzbName=None, logger=None):
 
     if lastline:
         log.info(lastline)
-        

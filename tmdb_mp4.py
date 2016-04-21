@@ -1,6 +1,9 @@
 import os
 import sys
-import urllib
+try:
+    from urllib.request import urlretrieve
+except ImportError:
+    from urllib import urlretrieve
 try:
     from StringIO import StringIO
 except ImportError:
@@ -54,18 +57,20 @@ class tmdb_mp4:
                 self.log.exception("Failed to connect to tMDB, trying again in 20 seconds.")
                 time.sleep(20)
 
-    def writeTags(self, mp4Path, artwork = True):
+    def writeTags(self, mp4Path, artwork=True, thumbnail=False):
         self.log.info("Tagging file: %s." % mp4Path)
         ext = os.path.splitext(mp4Path)[1][1:]
         if ext not in valid_output_extensions:
             self.log.error("File is not the correct format.")
             sys.exit()
+
+        video = MP4(mp4Path)
         try:
-            MP4(mp4Path).delete()
+            video.delete()
+            video.save()
         except IOError:
             self.log.debug("Unable to clear original tags, attempting to proceed.")
 
-        video = MP4(mp4Path)
         video["\xa9nam"] = self.title  # Movie title
         video["desc"] = self.shortdescription  # Short description
         video["ldes"] = self.description  # Long description
@@ -79,8 +84,8 @@ class tmdb_mp4:
                 if genre is None:
                     genre = g['name']
                     break
-                #else:
-                    #genre += ", " + g['name']
+                # else:
+                    # genre += ", " + g['name']
             video["\xa9gen"] = genre  # Genre(s)
         video["----:com.apple.iTunes:iTunMOVI"] = self.xml  # XML - see xmlTags method
         rating = self.rating()
@@ -133,7 +138,7 @@ class tmdb_mp4:
             self.HD = [0]
 
     def xmlTags(self):
-        #constants
+        # constants
         header = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict>\n"
         castheader = "<key>cast</key><array>\n"
         writerheader = "<key>screenwriters</key><array>\n"
@@ -149,32 +154,32 @@ class tmdb_mp4:
         output.write(castheader)
         for a in self.movie.get_cast()[:5]:
             if a is not None:
-                output.write("<dict><key>name</key><string>" + a['name'].encode('ascii', 'ignore') + "</string></dict>\n")
+                output.write("<dict><key>name</key><string>%s</string></dict>\n" % a['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
         # Write screenwriters
         output.write(writerheader)
         for w in self.movie.get_writers()[:5]:
             if w is not None:
-                output.write("<dict><key>name</key><string>" + w['name'].encode('ascii', 'ignore') + "</string></dict>\n")
+                output.write("<dict><key>name</key><string>%s</string></dict>\n" % w['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
         # Write directors
         output.write(directorheader)
         for d in self.movie.get_directors()[:5]:
             if d is not None:
-                output.write("<dict><key>name</key><string>" + d['name'].encode('ascii', 'ignore') + "</string></dict>\n")
+                output.write("<dict><key>name</key><string>%s</string></dict>\n" % d['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
         # Write producers
         output.write(producerheader)
         for p in self.movie.get_producers()[:5]:
             if p is not None:
-                output.write("<dict><key>name</key><string>" + p['name'].encode('ascii', 'ignore') + "</string></dict>\n")
+                output.write("<dict><key>name</key><string>%s</string></dict>\n" % p['name'].encode('ascii', 'ignore'))
         output.write(subfooter)
 
         # Write final footer
         output.write(footer)
         return output.getvalue()
         output.close()
-    #end xmlTags
+    # end xmlTags
 
     def getArtwork(self, mp4Path, filename='cover'):
         # Check for local artwork in the same directory as the mp4
@@ -187,15 +192,13 @@ class tmdb_mp4:
                 poster = path
                 self.log.info("Local artwork detected, using %s." % path)
                 break
-        #Pulls down all the poster metadata for the correct season and sorts them into the Poster object
+        # Pulls down all the poster metadata for the correct season and sorts them into the Poster object
         if poster is None:
             try:
-                poster = urllib.urlretrieve(self.movie.get_poster("l"), os.path.join(tempfile.gettempdir(),"poster.jpg"))[0]
+                poster = urlretrieve(self.movie.get_poster("l"), os.path.join(tempfile.gettempdir(), "poster.jpg"))[0]
             except:
                 poster = None
         return poster
-    #end artwork
-#end tmdb_mp4
 
 
 def main():

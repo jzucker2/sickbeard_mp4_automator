@@ -23,11 +23,11 @@ Downloaders Supported:
 
 Requirements
 --------------
-- Python 2.7 *(Does NOT work with Python 3)*
+- Python 2.7
+- Python 3 beta support has arrived. Feel free to begin testing and report bugs
 - FFMPEG and FFPROBE binaries
-- Requests module
-- Gevent
 - Python setup_tools
+- See PIP packages for additional requirements
 
 Default Settings
 --------------
@@ -35,31 +35,43 @@ Default Settings
 2. Audio - AAC 2.0 with additional AC3 track when source has >2 channels (ex 5.1)
 3. Subtitles - mov_text
 
-Prerequesite Installation Instructions
+Prerequesite PIP Package Installation Instructions
 --------------
-- `Setup_tools` - https://pypi.python.org/pypi/setuptools#installation-instructions
-- `Requests` - Run `pip install requests`
-- `Gevent` - Run `pip install gevent`
+- `VC for Python 2.7` (Windows Users Only) - Download and install - http://www.microsoft.com/en-us/download/details.aspx?id=44266
+- `setup_tools` - https://pypi.python.org/pypi/setuptools#installation-instructions
+- `requests` - Run `pip install requests`
+- `requests security package` - Run `pip install requests[security]`
+- `requests-cache` - Run `pip install requests-cache`
+- `babelfish` - Run `pip install babelfish`
+- `guessit` - Run `pip install guessit<2` to use manual.py (requires guessit version 1, version 2 is a complete rewrite, still in alpha, and not backwards compatible)
+- `subliminal`- Run `pip install subliminal` to enable automatically downloading subtitles
 - `stevedore` - Run `pip install stevedore` (this will be automatically installed with subliminal)
 - `dateutil` - Run `pip install python-dateutil` (this will be automatically installed with subliminal)
+- `deluge-client` Run `pip install deluge-client` if you plan on using Deluge
+- `qtfaststart` Run `pip install qtfaststart` to enable moving moov atom
 
 General MP4 Configuration
 --------------
 1. Rename autoProcess.ini.sample to autoProcess.ini
 2. Set the MP4 variables to your desired output
-    - `ffmpeg` = Path to FFMPEG.exe
-    - `ffprobe` = Path to FFPROBE.exe
+    - `ffmpeg` = Full path to FFMPEG.exe
+    - `ffprobe` = Full path to FFPROBE.exe
+    - `threads` = Number of threads for FFMPEG to use, default "auto"
     - `output_directory` = you may specify an alternate output directory. Leave blank to use the same directory that the source file is in. All processing will be done in this location. (Do not use for 'Automatically Add to iTunes' folder, iTunes will add prematurely, use `move_to`)
     - `copy_to` = you may specify additional directories for the final product to be replicated to. This will be the last step performed so the file copied will be fully processed. Directories may be separated with a `|` character
     - `move_to` = you may specify one final directory to move the completed file. (Use this option for the 'Automatically Add to iTunes' folder, or another option below for those using OSX)
     - `output_extension` = mp4/m4v (must be one of these 2)
-    - `output_format` = mp4/mov (must be one of these 2, mov provides better compatability with iTunes/Apple, mp4 works better with other mobile devices)
+    - `output_format` = mp4/mov (must be one of these 2, mov provides better compatibility with iTunes/Apple, mp4 works better with other mobile devices)
     - `delete_original` = True/False
     - `relocate_moov` = True/False - relocates the MOOV atom to the beginning of the file for better streaming
-    - `ios-audio` = creates a 2nd copy of an audio stream that will be iOS compatible (AAC Stereo) if the normal output will not be. If a stereo source stream is detected with this option enabled, an AAC stereo stream will be the only one produced (essentially overriding the codec option) to avoid multiple stereo audio stream copies in different codecs.
+    - `ios-audio` = creates a 2nd copy of an audio stream that will be iOS compatible (AAC Stereo) if the normal output will not be. If a stereo source stream is detected with this option enabled, an AAC stereo stream will be the only one produced (essentially overriding the codec option) to avoid multiple stereo audio stream copies in different codecs. Instead of 'true' you may also set this option to a specific codec to override the default.
+    - `ios-first-track-only` = Applies the `ios-audio` option only to the first audio track encountered in the source video file. This prevents making dual audio streams for additional alternative language codecs or commentary tracks that may be present in the source file.
     - `max-audio-channels` = Sets a maximum number of audio channels. This may provide an alternative to the iOS audio option, where instead users can simply select the desired output codec and the max number of audio channels without the creation of an additional audio track.
     - `video-codec` = set your desired video codecs. May specify multiple comma separated values (ex: h264, x264). The first value specified will be the default conversion choice when an undesired codec is encountered; any codecs specified here will be remuxed/copied rather than converted.
     - `video-bitrate` = allows you to set a maximum video bitrate in Kbps. If the source file exceeds the video-bitrate it will be transcoded to the specified video-bitrate, even if they source file is already in the correct video codec. If the source file is in the correct video codec and does not exceed the video-bitrate setting, then it will be copied without transcoding. Leave blank to disable this setting.
+    - `video-max-width` = set a max video width to downsize higher resolution video files. Aspect ratio will be preserved.
+    - `h264-max-level` = set your max h264 level. Use the decimal format. Levels lower than the specified value, if otherwise appropriate, will be copied without transcoding. Example - `4.0`.
+    - `pix_fmt` = set the video pix_fmt. If you don't know what this is just leave it blank.
     - `audio-codec` = set your desired audio codecs. May specify multiple comma separated values (ex: ac3, aac). The first value specified will be the default conversion choice when an undesired codec is encountered; any codecs specified here will be remuxed/copied rather than converted.
     - `audio-channel-bitrate` = set the bitrate for each audio channel. Default is 256. Setting this value to 0 will attempt to mirror the bitrate of the audio source, but this can be unreliable as bitrates vary between different codecs.
     - `audio-language` = 3 letter language code for audio streams you wish to copy. Leave blank to copy all. Separate multiple audio streams with commas (ex: eng,spa)
@@ -71,33 +83,11 @@ General MP4 Configuration
     - `fullpathguess` = True/False - When manually processing a file, enable to guess metadata using the full path versus just the file name. (Files shows placed in a 'Movies' folder will be recognized as movies, not as TV shows for example.)
     - `tagfile` = True/False - Enable or disable tagging file with appropriate metadata after encoding.
     - `tag-language` = en - Set your tag language for TMDB/TVDB entries metadata retrieval. Use either 2 or 3 character language codes.
-    - `download-artwork` = True/False - Enabled downloading and embeddeding of Season or Movie posters and embeddeding of that image into the mp4 as the cover image.
-    - `download-subs` = True/False - When enabled the script will attempt to download subtitles of your specified languages automatically using subliminal and merge them into the final mp4 file.
+    - `download-artwork` = Poster/Thumbnail/False - Enabled downloading and embeddeding of Season or Movie posters and embeddeding of that image into the mp4 as the cover image. For TV shows you may choose between the season artwork or the episode thumbnail by selecting the corresponding option.
     - `embed-subs` = True/False - Enabled by default. Embeds subtitles in the resulting MP4 file that are found embedded in the source file as well as external SRT/VTT files. Disabling embed-subs will cause the script to extract any subtitles that meet your language criteria into external SRT/VTT files. The script will also attempt to download SRT files if possible and this feature is enabled.
-    **YOU MUST INSTALL SUBLIMINAL AND ITS DEPENDENCIES FOR THIS TO WORK.** You must go into the `setup\subliminal` directory included in this script and run `setup.py install` to add support for fetching of subtitles. The version included with this script is modified from the stock version of subliminal, so you must install the included version.
+    - `download-subs` = True/False - When enabled the script will attempt to download subtitles of your specified languages automatically using subliminal and merge them into the final mp4 file.
+    **YOU MUST INSTALL SUBLIMINAL AND ITS DEPENDENCIES FOR THIS TO WORK.** You must run `pip install subliminal` in order for this feature to be enabled.
     - `sub-providers` = Comma separated values for potential subtitle providers. Must specify at least 1 provider to enable `download-subs`. Providers include `podnapisi` `thesubdb` `opensubtitles` `tvsubtitles` `addic7ed`
-
-Post Process Scripts
---------------
-Will run all scripts in root/post_process except for any files in root/post_process/resources
-scripts need to be executables
-environmental variables set for scripts
-key: moveto
-value: /Users/jzucker/Desktop/home_conversion/Shakespeare.In.Love.1998.720p.x264.YIFY.mp4
-key: output
-value: /Users/jzucker/Desktop/start/Shakespeare.In.Love.1998.720p.x264.YIFY.mp4
-key: input_deleted
-value: False
-key: x
-value: 1280
-key: y
-value: 544
-key: copyto
-value: None
-key: input
-value: /Users/jzucker/Desktop/start/Shakespeare.In.Love.1998.720p.x264.YIFY.mp4
-key: options
-value: None
 
 Sick Beard Setup
 --------------
@@ -128,18 +118,29 @@ SickRage Setup
     - `user` - Username
     - `password` - Password
 
-Sonarr Setup (Tagging Not Supported)
+Sonarr Setup
 --------------
-1. ** YOU MUST INSTALL THE PYTHON REQUESTS LIBRARY ** Run "pip install requests" or "easy_install requests"
-2. Set your Sonarr settings in the autoProcess.ini file
+1. Set your Sonarr settings in the autoProcess.ini file
     - `host` = Sonarr host address (localhost)    #Settings/General/Start-Up
     - `port` = Sonarr port (8989)                 #Settings/General/Start-Up
     - `ssl` = 1 if enabled, 0 if not              #Settings/General/Security
     - `apikey` = Sonarr API Key (required)        #Settings/General/Security
     - `web_root` = URL base empty or e.g. /tv     #Settings/General/Start-Up
 2. Browse to the Settings>Download Client tab and enable advanced settings [Show].
-3. Set the {Drone Factory Interval} to 0 to disable it. (NZBGet will trigger a specific path re-scan, allowing the mp4 conversion to be completed before Sonarr starts moving stuff around).
-    - Sonarr does not currently support post processing scripts so tagging is not currently supported.
+3. Set the Drone Factory Interval' to 0 to disable it, and disable 'Completed Download Handling' in Sonarr settings. The script will trigger a specific path re-scan, allowing the mp4 conversion to be completed before Sonarr starts moving stuff around. This step is optional if you do not desire any processing between the downloading by whichever downloader you choose (NZB or Torrent), but is required if you wish to convert the file to an MP4 before it is handed back to Sonarr.
+4. Setup the postSonarr.py script via Settings > Connect > Connections > + (Add)
+    - `name` - postSonarr
+    - `On Grab` - No
+    - `On Download` - Yes
+    - `On Upgrade` - Yes
+    - `On Rename` - No
+    - Filter Series Tags - optional
+    - Windows Users
+      - `Path` - Full path to your python executable
+      - `Arguments` - Full path to `postSonarr.py`
+    - Nonwindows Users
+      - `Path` - Full path to `postSonarr.py`
+      - `Arguments` - Leave blank
 
 Couch Potato Setup
 --------------
@@ -162,7 +163,8 @@ Couch Potato Setup
     - Verify in Couch Potato logs that PostProcess was loaded.
 3. If you're using one of the post download scripts ([SAB|NZBGet|uTorrent|deluge]PostProcess.py), disable automatic checking of the renamer folder, the script will automatically notify Couch Potato when it is complete to check for new videos to be renamed and relocated. Leaving this on may cause conflicts and CouchPotato may try to relocate/rename the file before processing is completed.
     - Set `Run Every` to `0`
-    - If you aren't using one of these scripts and are using an unsupport downloader, you will need to have CouchPotato periodically check the folder for files
+    - Set `Force Every` to `0`
+    - If you aren't using one of these scripts and are using an unsupported downloader, you will need to have CouchPotato periodically check the folder for files, otherwise the post downloader scripts will manually trigger a renamer scan. Using manual triggers is helpful because it prevents a coincidental renamer scan during other processing events.
 4. Configure Downloaders
     - In `Settings > Downloaders` configure your labels or categories to match what you have configured in your respective downloader.
 
@@ -216,8 +218,7 @@ uTorrent Setup
 2. Launch uTorrent
 3. Set `Run Program` option
     - Go to `Options > Preferences > Advanced > Run Program`
-    - Point to `uTorrentPostProcess.py` with command line parameters: `%L %T %D %K %F %I` in that exact order.
-    - Reference picture: http://i.imgur.com/7eADkCI.png
+    - Point to `uTorrentPostProcess.py` with command line parameters: `%L %T %D %K %F %I %N` in that exact order.
 3. Set your uTorrent settings in autoProcess.ini
     - `convert` - `True`/`False`. Allows for conversion of files before passing back to the respective download manager.
     - `sickbeard-label` - default `sickbeard` - uTorrent label that should be assigned to torrents that will be sent to Sickbeard for additional processing when download is complete.
@@ -275,6 +276,20 @@ Send a Plex notification as the final step when all processing is completed. Thi
     - `refresh` - `True`/`False` - Enable or disable the feature
     - `host` - Plex hostname. Default `localhost`
     - `port` - Plex port. Default `32400`
+    - `token` - Plex Home Token
+
+Post Process Scripts
+--------------
+The script suite supports the ability to write your own post processing scripts that will be executed when all the final processing has been completed. All scripts in the `./post_process` directory will be executed if the `post-process` option is set to `True` in `autoProcess.ini`. Scripts within the `./post_process/resources` directory are protected from execution if additional script resources are required.
+
+The following environmental variables are available for usage:
+- `MH_FILES` - JSON Array of all files created by the post processing script. The first file in the array is the primary file, and any additional files are copies created by the copy-to option
+- `MH_TVDBID` - TVDB ID if file processed was a TV show and this information is available
+- `MH_SEASON` - Season number if file processed was a TV show
+- `MH_EPISODE` - Episode number if files processed was a TV show
+- `MH_IMDBID` - IMDB ID if file processed was a movie
+A sample script as well as an OS X 'Add to iTunes' script (`iTunes.py`) have been provided.
+*Special thanks to jzucker2 for providing much of the initial code for this feature*
 
 Manual Script Usage
 --------------
@@ -309,6 +324,8 @@ optional arguments:
                         Specify theMovieDB ID for a movie
   -nm, --nomove         Overrides and disables the custom moving of file
                         options that come from output_dir and move-to
+  -m, --moveto          Override move-to value setting in autoProcess.ini
+                        changing the final destination of the file
   -nc, --nocopy         Overrides and disables the custom copying of file
                         options that come from output_dir and move-to
   -nt, --notag          Overrides and disables tagging when using the
