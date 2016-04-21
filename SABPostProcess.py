@@ -48,7 +48,6 @@ if len(categories) != len(set(categories)):
 if settings.SAB['convert']:
     log.info("Performing conversion")
     converter = MkvtoMp4(settings)
-    converter.output_dir = None
     for r, d, f in os.walk(path):
         for files in f:
             inputfile = os.path.join(r, files)
@@ -56,13 +55,12 @@ if settings.SAB['convert']:
                 log.info("Processing file %s." % inputfile)
                 try:
                     output = converter.process(inputfile)
-                    if (category == categories[2] and settings.relocate_moov):
-                        log.debug("Performing QTFS move because video was converted and Sonarr has no post processing.")
-                        converter.QTFS(output['output'])
                 except:
                     log.exception("Error converting file %s." % inputfile)
             else:
                 log.debug("Ignoring file %s." % inputfile)
+    if converter.output_dir:
+        path = converter.output_dir
 else:
     log.info("Passing without conversion.")
 

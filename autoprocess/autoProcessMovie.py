@@ -1,18 +1,22 @@
 import sys
-import urllib
+try:
+    from urllib.request import FancyURLopener
+except ImportError:
+    from urllib import FancyURLopener
 import os.path
 import shutil
 import time
 import json
 import logging
+import requests
 
 
-class AuthURLOpener(urllib.FancyURLopener):
+class AuthURLOpener(FancyURLopener):
     def __init__(self, user, pw):
         self.username = user
         self.password = pw
         self.numTries = 0
-        urllib.FancyURLopener.__init__(self)
+        FancyURLopener.__init__(self)
 
     def prompt_user_passwd(self, host, realm):
         if self.numTries == 0:
@@ -23,7 +27,7 @@ class AuthURLOpener(urllib.FancyURLopener):
 
     def openit(self, url):
         self.numTries = 0
-        return urllib.FancyURLopener.open(self, url)
+        return FancyURLopener.open(self, url)
 
 
 def process(dirName, settings, nzbName=None, status=0, logger=None):
@@ -46,6 +50,9 @@ def process(dirName, settings, nzbName=None, status=0, logger=None):
     delete_failed = settings.CP['delete_failed']
     protocol = settings.CP['protocol']
     web_root = settings.CP['web_root']
+
+    if web_root != "" and not web_root.startswith("/"):
+        web_root = "/" + web_root
 
     myOpener = AuthURLOpener(username, password)
     nzbName1 = str(nzbName)
@@ -73,21 +80,20 @@ def process(dirName, settings, nzbName=None, status=0, logger=None):
 
         url = protocol + host + ":" + port + web_root + "/api/" + apikey + "/" + command
 
+        params = {'media_folder': dirName, 'downloader': 'manual'}
+
         log.info("Waiting for %s seconds to allow CPS to process newly extracted files." % str(delay))
 
         time.sleep(delay)
 
         log.info("Opening URL: %s." % url)
 
-        try:
-            urlObj = myOpener.openit(url)
-        except IOError, e:
-            log.exception("Unable to open URL.")
-            sys.exit(1)
+        r = requests.get(url, params=params)
 
-        result = json.load(urlObj)
-        log.info("CouchPotatoServer returned %s." % result)
-        if result['success']:
+        rstate = r.json()
+
+        log.info("CouchPotatoServer returned %s." % rstate)
+        if rstate['success']:
             log.info("%s started on CouchPotatoServer for %s." % (command, nzbName1))
         else:
             log.error("%s has NOT started on CouchPotatoServer for %s." % (command, nzbName1))
@@ -95,33 +101,33 @@ def process(dirName, settings, nzbName=None, status=0, logger=None):
     else:
         log.info("Download of %s has failed." % nzbName1)
         log.info("Trying to re-cue the next highest ranked release.")
-        a = nzbName1.find('.cp(') + 4
-        b = nzbName1[a:].find(')') + a
-        imdbid = nzbName1[a:b]
+        try:
+            a = nzbName1.find('.cp(') + 4
+            b = nzbName1[a:].find(')') + a
+            imdbid = nzbName1[a:b]
 
-        log.debug("Attempt to determine IMDBID resulted in '%s'." % imdbid)
+            log.debug("Attempt to determine IMDBID resulted in '%s'." % imdbid)
+        except:
+            log.exception("Unable to determine release IMDB ID for requeueing.")
+            sys.exit()
 
         url = protocol + host + ":" + port + web_root + "/api/" + apikey + "/movie.list"
         log.info("Opening URL: %s." % url)
 
         try:
             urlObj = myOpener.openit(url)
-        except IOError, e:
+        except IOError:
             log.exception("Unable to open URL.")
             sys.exit(1)
 
         n = 0
         result = json.load(urlObj)
-        movieid = [item["id"] for item in result["movies"]]
-        library = [item["library"] for item in result["movies"]]
-        identifier = [item["identifier"] for item in library]
-        
+        movieid = [item["info"]["imdb"] for item in result["movies"]]
+
         log.debug("Movie ID: %s." % movieid)
-        log.debug("Library: %s." % library)
-        log.debug("Identifier: %s" % identifier)
 
         for index in range(len(movieid)):
-            if identifier[index] == imdbid:
+            if movieid[index] == imdbid:
                 movid = str(movieid[index])
                 log.info("Found movie id %s in database for release %s." % (movid, nzbName1))
                 n = n + 1
@@ -133,12 +139,12 @@ def process(dirName, settings, nzbName=None, status=0, logger=None):
             log.error("Exiting postprocessing script")
             sys.exit(1)
 
-        url = protocol + host + ":" + port + web_root + "/api/" + apikey + "/searcher.try_next/?id=" + movid
+        url = protocol + host + ":" + port + web_root + "/api/" + apikey + "/movie.searcher.try_next/?media_id=" + movid
         log.info("Opening URL: %s." % url)
 
         try:
             urlObj = myOpener.openit(url)
-        except IOError, e:
+        except IOError:
             log.exception("Unable to open URL.")
             sys.exit(1)
 
